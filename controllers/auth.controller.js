@@ -8,7 +8,7 @@ export const signUp = async (req, res, next) => {
   session.startTransaction();
 
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     // check if user already exists
     const existingUser = await User.findOne({ email });
@@ -23,7 +23,7 @@ export const signUp = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // create new user and save with session
-    const newUser = new User({ name, email, password: hashedPassword });
+    const newUser = new User({ name, role, email, password: hashedPassword });
     await newUser.save({ session });
 
     // generate token
@@ -40,6 +40,7 @@ export const signUp = async (req, res, next) => {
         id: newUser._id,
         name: newUser.name,
         email: newUser.email,
+        role: newUser.role,
       },
       token,
     });
@@ -75,6 +76,7 @@ export const signIn = async (req, res, next) => {
             id: user._id,
             name: user.name,
             email: user.email,
+            role: user.role,
           },
           token,
         });

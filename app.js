@@ -8,6 +8,10 @@ import errorMiddleware from "./middlewres/error.middleware.js";
 import cookieParser from "cookie-parser";
 import arcjetMiddleware from "./middlewres/arcjet.middleware.js";
 import workflowRouter from "./routes/workflow.routes.js";
+import corsMiddleware from "./middlewres/cors.middleware.js";
+import dashboardRouter from "./routes/dashboard.routes.js";
+import adminRouter from "./routes/admin.routes.js";
+import semdMailRouter from "./routes/test.route.js";
 
 const app = express();
 
@@ -15,10 +19,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static("public"));
-app.use(arcjetMiddleware);
+// app.use(arcjetMiddleware);
+app.use(corsMiddleware);
 
-app.use("/api/v1/users", userRouter);
+app.use("/api/v1/admin", adminRouter);
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/dashboard", dashboardRouter);
 app.use("/api/v1/subscriptions", subscriptionRouter);
 app.use("/api/v1/workflows", workflowRouter);
 

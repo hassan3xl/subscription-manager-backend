@@ -11,4 +11,6 @@ export const {
   JWT_EXPIRES_IN,
   NODE_ENV,
   DB_URI,
+  RESEND_API_KEY,
+  RESEND_FROM,
 } = process.env;
