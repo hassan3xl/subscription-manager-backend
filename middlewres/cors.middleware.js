@@ -1,7 +1,10 @@
 // middlewares/cors.middleware.js
 import cors from "cors";
 
-const allowedOrigins = ["http://localhost:3000", "https://yourdomain.com"];
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://subscriptionmanager-nu.vercel.app",
+];
 
 const corsMiddleware = cors({
   origin: (origin, callback) => {

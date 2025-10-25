@@ -9,7 +9,7 @@ import workflowRouter from "./routes/workflow.routes.js";
 import corsMiddleware from "./middlewres/cors.middleware.js";
 import dashboardRouter from "./routes/dashboard.routes.js";
 import adminRouter from "./routes/admin.routes.js";
-import semdMailRouter from "./routes/test.route.js";
+import webhookRouter from "./routes/webhook.route.js";
 
 const app = express();
 
@@ -25,6 +25,7 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/dashboard", dashboardRouter);
 app.use("/api/v1/subscriptions", subscriptionRouter);
 app.use("/api/v1/workflows", workflowRouter);
+app.use("/api/v1/webhook", webhookRouter);
 
 app.use(errorMiddleware);
 
