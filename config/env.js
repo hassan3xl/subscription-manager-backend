@@ -6,7 +6,6 @@ dotenv.config({ path: `.env.${env}.local` });
 
 export const {
   PORT,
-  ARCJET_KEY,
   JWT_SECRET,
   JWT_EXPIRES_IN,
   NODE_ENV,

@@ -1,12 +1,10 @@
 import express from "express";
 import { PORT } from "./config/env.js";
-import userRouter from "./routes/user.routes.js";
 import authRouter from "./routes/auth.routes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import connectToDb from "./database/mongodb.js";
 import errorMiddleware from "./middlewres/error.middleware.js";
 import cookieParser from "cookie-parser";
-import arcjetMiddleware from "./middlewres/arcjet.middleware.js";
 import workflowRouter from "./routes/workflow.routes.js";
 import corsMiddleware from "./middlewres/cors.middleware.js";
 import dashboardRouter from "./routes/dashboard.routes.js";
