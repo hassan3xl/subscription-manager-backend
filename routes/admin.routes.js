@@ -19,7 +19,7 @@ const adminRouter = Router();
 // ADMIN USERS ROUTES
 
 // dashboard
-adminRouter.get("/dashboard", adminAuth, getAdminDashboard);
+adminRouter.get("/dashboard", getAdminDashboard);
 // get all users
 adminRouter.get("/users", getUsers);
 // get user by id

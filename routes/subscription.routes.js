@@ -6,6 +6,10 @@ import {
   getSubscriptionById,
   getSubscriptions,
 } from "../controllers/subscription.controller.js";
+import {
+  initializeSubscriptionPayment,
+  // verifySubscriptionPayment,
+} from "../controllers/payment.controller.js";
 
 Router;
 
@@ -18,5 +22,20 @@ subscriptionRouter.post("/", authorize, createSubscription);
 subscriptionRouter.get("/:id", authorize, getSubscriptionById);
 
 subscriptionRouter.put("/:id/cancel", authorize, cancelSubscription);
+
+// Payment routes
+subscriptionRouter.post(
+  "/initialize-payment",
+  authorize,
+  initializeSubscriptionPayment
+);
+// subscriptionRouter.post(
+//   "/verify-payment",
+//   authorize,
+//   verifySubscriptionPayment
+// );
+
+// Webhook route (no authentication needed)
+// subscriptionRouter.post("/webhook/paystack", handlePaystackWebhook);
 
 export default subscriptionRouter;

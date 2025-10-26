@@ -1,107 +1,77 @@
+// models/Subscription.js
 import mongoose from "mongoose";
 
 const subscriptionSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: [true, "Subscription name is required"],
-      trim: true,
-      minLength: 2,
-      maxLength: 100,
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
     },
-    price: {
-      type: Number,
-      required: [true, "Subscription price is required"],
-      min: [0, "Subscription price must be greater than 0"],
+
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      required: [true, "Subscribed product is required"],
     },
-    currency: {
-      type: String,
-      enum: ["USD", "EUR", "NGN"],
-      default: "NGN",
+
+    startDate: {
+      type: Date,
+      default: Date.now,
     },
+
+    renewalDate: {
+      type: Date,
+    },
+
     frequency: {
       type: String,
       enum: ["daily", "weekly", "monthly", "yearly"],
       default: "monthly",
     },
-    category: {
-      type: String,
-      enum: ["sports", "news", "technology", "movies", "music"],
-      default: "technology",
-      required: [true, "Subscription category is required"],
-    },
 
-    status: {
-      type: String,
-      enum: ["active", "cancelled", "expired"],
-      default: "active",
-    },
-
-    cancelledAt: {
-      type: Date,
-      default: null,
-    },
-    cancelReason: {
-      type: String,
-      trim: true,
+    isRecurring: {
+      type: Boolean,
+      default: true,
     },
 
     paymentMethod: {
       type: String,
       enum: ["card", "bank_transfer", "paystack", "crypto", "paypal", "other"],
       default: "paystack",
-      required: [true, "Payment method is required"],
     },
 
-    startDate: {
-      type: Date,
-      required: true,
-      default: Date.now,
-      validate: {
-        validator: (value) => value <= new Date(),
-        message: "Start date must be in the past or now",
-      },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "successful", "failed", "refunded"],
+      default: "pending",
     },
 
-    renewalDate: {
-      type: Date,
-      required: true,
-      default: Date.now,
-      validate: {
-        validator: function (value) {
-          return value > this.startDate;
-        },
-        message: "Renewal date must be after the start date",
-      },
+    paymentReference: {
+      type: String,
+      unique: true,
+      sparse: true,
     },
 
-    // reminder before renewal or cancellation period
-
-    reminders: {
-      type: [Date],
-      default: [],
+    priceAtSubscription: {
+      type: Number,
+      required: [true, "Price at time of subscription is required"],
     },
 
-    reminderDate: {
-      type: Date,
-      default: function () {
-        // default 3 days before renewal date
-        const date = new Date(this.renewalDate);
-        date.setDate(date.getDate() - 3);
-        return date;
-      },
+    status: {
+      type: String,
+      enum: ["active", "cancelled", "expired", "pending"],
+      default: "active",
     },
 
+    cancelledAt: Date,
+    cancelReason: String,
+
+    reminderDate: Date,
     reminderSent: {
       type: Boolean,
       default: false,
-    },
-
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
     },
   },
   {
@@ -109,30 +79,28 @@ const subscriptionSchema = new mongoose.Schema(
   }
 );
 
-// auto calculate renewal date and reminder date
+// 🔁 Auto-calculate renewalDate and reminderDate
 subscriptionSchema.pre("save", function (next) {
-  if (!this.renewalDate) {
-    const renewalPeriod = {
-      daily: 1,
-      weekly: 7,
-      monthly: 30,
-      yearly: 365,
-    };
+  const renewalPeriod = {
+    daily: 1,
+    weekly: 7,
+    monthly: 30,
+    yearly: 365,
+  };
 
+  if (!this.renewalDate) {
     this.renewalDate = new Date(this.startDate);
     this.renewalDate.setDate(
       this.startDate.getDate() + renewalPeriod[this.frequency]
     );
   }
 
-  // Auto-calculate reminder date if not manually set
   if (!this.reminderDate) {
     const reminder = new Date(this.renewalDate);
     reminder.setDate(reminder.getDate() - 3);
     this.reminderDate = reminder;
   }
 
-  // auto-update the status if renewal date has passed
   if (this.renewalDate < new Date()) {
     this.status = "expired";
   }
@@ -141,5 +109,4 @@ subscriptionSchema.pre("save", function (next) {
 });
 
 const Subscription = mongoose.model("Subscription", subscriptionSchema);
-
 export default Subscription;

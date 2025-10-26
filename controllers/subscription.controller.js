@@ -1,24 +1,28 @@
-import { getMonnifyToken } from "../config/monnifyAuth.js";
 import Subscription from "../models/subscription.model.js";
-
-import axios from "axios";
 
 export const createSubscription = async (req, res, next) => {
   try {
-    const {
-      name,
-      price,
-      currency = "NGN",
-      frequency = "monthly",
-      startDate,
-      category,
-    } = req.body;
+    const { startDate, frequency } = req.body;
 
-    // 1️⃣ Calculate renewal and reminder dates
-    const renewalPeriod = { daily: 1, weekly: 7, monthly: 30, yearly: 365 };
+    // Create a temporary subscription object to get the renewal date calculation logic
+    const tempSub = new Subscription({
+      ...req.body,
+      user: req.user._id,
+    });
+
+    // Calculate renewalDate manually to compute reminders correctly
+    const renewalPeriod = {
+      daily: 1,
+      weekly: 7,
+      monthly: 30,
+      yearly: 365,
+    };
     const renewalDate = new Date(startDate || Date.now());
-    renewalDate.setDate(renewalDate.getDate() + renewalPeriod[frequency]);
+    renewalDate.setDate(
+      renewalDate.getDate() + renewalPeriod[frequency || "monthly"]
+    );
 
+    // Generate reminder dates: 7, 5, 3, and 1 day before renewal
     const reminderOffsets = [7, 5, 3, 1];
     const reminders = reminderOffsets.map((days) => {
       const d = new Date(renewalDate);
@@ -26,68 +30,37 @@ export const createSubscription = async (req, res, next) => {
       return d;
     });
 
-    // 2️⃣ Generate Monnify transaction reference
-    const transactionRef = `SUB_${Date.now()}_${Math.floor(
-      Math.random() * 1000
-    )}`;
-
-    // 3️⃣ Get Monnify access token
-    const token = await getMonnifyToken();
-
-    // 4️⃣ Initialize Monnify transaction
-    const response = await axios.post(
-      `${process.env.MONNIFY_BASE_URL}/transactions/init-transaction`,
-      {
-        amount: price,
-        customerName: req.user?.name || "Anonymous User",
-        customerEmail: req.user?.email || "test@example.com",
-        paymentReference: transactionRef,
-        paymentDescription: `Purchase of ${name} plan`,
-        currencyCode: currency,
-        contractCode: process.env.MONNIFY_CONTRACT_CODE,
-        redirectUrl: `${process.env.CLIENT_URL}/payment-success`, // your frontend
-        paymentMethods: ["CARD", "ACCOUNT_TRANSFER"],
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-
-    const monnifyData = response.data.responseBody;
-
-    // 5️⃣ Create subscription (status = pending until payment)
+    // Create subscription in DB
     const subscription = await Subscription.create({
-      name,
-      price,
-      currency,
-      frequency,
-      category,
-      startDate: startDate || Date.now(),
+      ...req.body,
+      user: req.user._id,
       renewalDate,
       reminders,
-      user: req.user._id,
-      status: "pending",
-      paymentMethod: "monnify",
-      paymentReference: transactionRef, // save this for webhook match
     });
 
-    // 6️⃣ Return checkout URL to frontend
-    return res.status(200).json({
+    res.status(201).json({
       success: true,
-      message: "Monnify payment initialized successfully",
-      checkoutUrl: monnifyData.checkoutUrl,
-      transactionRef,
-      subscription,
+      data: { subscription },
     });
   } catch (error) {
-    console.error("Monnify init error:", error.response?.data || error.message);
     next(error);
   }
 };
 
 export const getSubscriptions = async (req, res, next) => {
   try {
-    const subscriptions = await Subscription.find({ user: req.user._id });
+    const subscriptions = await Subscription.find({ user: req.user._id })
+      .populate({
+        path: "user",
+        select: "name email",
+      })
+      .populate({
+        path: "product",
+        select: "name price category",
+        populate: { path: "category", select: "name" },
+      })
+      .sort({ createdAt: -1 })
+      .limit(10);
     res.status(200).json({ success: true, data: subscriptions });
   } catch (error) {
     next(error);
@@ -99,7 +72,18 @@ export const getSubscriptionById = async (req, res, next) => {
     const subscription = await Subscription.findOne({
       _id: req.params.id,
       user: req.user._id,
-    });
+    })
+      .populate({
+        path: "user",
+        select: "name email",
+      })
+      .populate({
+        path: "product",
+        select: "name price category",
+        populate: { path: "category", select: "name" },
+      })
+      .sort({ createdAt: -1 })
+      .limit(10);
     if (!subscription) {
       return res
         .status(404)

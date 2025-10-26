@@ -1,10 +1,7 @@
+// controllers/dashboardController.js
 import mongoose from "mongoose";
 import Subscription from "../models/subscription.model.js";
 
-/**
- * USER DASHBOARD
- * GET /api/v1/dashboard/user
- */
 export const getUserDashboard = async (req, res) => {
   try {
     const userId = req.user?._id;
@@ -16,13 +13,20 @@ export const getUserDashboard = async (req, res) => {
       });
     }
 
-    // Fetch all subscriptions for this user
-    const subscriptions = await Subscription.find({ user: userId }).sort({
-      createdAt: -1,
-    });
+    // ✅ Fetch subscriptions for this user with product + category populated
+    const subscriptions = await Subscription.find({ user: userId })
+      .populate({
+        path: "product",
+        populate: {
+          path: "category",
+          select: "name",
+        },
+      })
+      .sort({ createdAt: -1 });
 
     const totalSubscriptions = subscriptions.length;
 
+    // ✅ Status breakdown
     const activeCount = subscriptions.filter(
       (s) => s.status === "active"
     ).length;
@@ -33,26 +37,44 @@ export const getUserDashboard = async (req, res) => {
       (s) => s.status === "expired"
     ).length;
 
-    // Total amount the user is spending
+    // ✅ Total amount spent (based on priceAtSubscription)
     const totalSpent = subscriptions.reduce(
-      (sum, s) => sum + (s.price || 0),
+      (sum, s) => sum + (s.priceAtSubscription || s.product?.price || 0),
       0
     );
 
-    // Upcoming renewals
+    // ✅ Upcoming renewals (for next 5)
     const upcomingRenewals = subscriptions
-      .filter((s) => new Date(s.renewalDate) > new Date())
+      .filter((s) => s.renewalDate && new Date(s.renewalDate) > new Date())
       .sort((a, b) => new Date(a.renewalDate) - new Date(b.renewalDate))
       .slice(0, 5);
 
-    // Category breakdown (for charts)
+    // ✅ Category breakdown using aggregation (based on product.category)
     const categoryStats = await Subscription.aggregate([
       { $match: { user: new mongoose.Types.ObjectId(userId) } },
       {
+        $lookup: {
+          from: "products",
+          localField: "product",
+          foreignField: "_id",
+          as: "productData",
+        },
+      },
+      { $unwind: "$productData" },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "productData.category",
+          foreignField: "_id",
+          as: "categoryData",
+        },
+      },
+      { $unwind: "$categoryData" },
+      {
         $group: {
-          _id: "$category",
+          _id: "$categoryData.name",
           count: { $sum: 1 },
-          totalSpent: { $sum: "$price" },
+          totalSpent: { $sum: "$priceAtSubscription" },
         },
       },
       {
@@ -65,6 +87,7 @@ export const getUserDashboard = async (req, res) => {
       },
     ]);
 
+    // ✅ Return complete data
     res.status(200).json({
       success: true,
       message: "User dashboard stats fetched successfully",
